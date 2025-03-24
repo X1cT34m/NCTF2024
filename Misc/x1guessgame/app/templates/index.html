@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>x1guessgame</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 90%;
+            height: 600px;
+            margin: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 统一输出区域样式 */
+        .output-common {
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.25);
+            color: #fff;
+            resize: none;
+            font-family: 'Courier New', monospace;
+            padding: 1.2rem;
+            line-height: 1.6;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 上半部输出区域 */
+        #output1 {
+            flex: 0 0 35%;
+            font-size: 1rem;
+            color: #ffffff;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 下半部输出区域 */
+        #output2 {
+            flex: 1;
+            font-size: 1rem;
+        }
+
+        /* 布局调整 */
+        .content {
+            flex: 1;
+            display: flex;
+            gap: 2rem;
+        }
+
+        .buttons {
+            flex: 0 0 25%;
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+            justify-content: center;
+        }
+
+        .output-container {
+            flex: 1;
+            display: flex;
+        }
+
+        /* 按钮样式 */
+        button {
+            padding: 1rem 1.5rem;
+            font-size: 0.95rem;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #4e54c8 0%, #8f94fb 100%);
+            color: white;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            letter-spacing: 0.5px;
+            width: 100%;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(78, 84, 200, 0.4);
+        }
+
+        button:disabled {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            cursor: not-allowed;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <textarea id="output1" class="output-common" readonly>
+   _  _____                                                    
+  | |/ <  /___ ___  _____  ______________ _____ _____ ___  ___ 
+  |   // / __ `/ / / / _ \/ ___/ ___/ __ `/ __ `/ __ `__ \/ _ \
+ /   |/ / /_/ / /_/ /  __(__  |__  ) /_/ / /_/ / / / / / /  __/
+/_/|_/_/\__, /\__,_/\___/____/____/\__, /\__,_/_/ /_/ /_/\___/ 
+       /____/                     /____/                       </textarea>
+
+        <div class="content">
+            <div class="buttons">
+                <button id="button1" onclick="handleButtonClick('launch')">LAUNCH</button>
+                <button id="button2" onclick="handleButtonClick('new round')" disabled>NEW ROUND</button>
+                <button id="button3" onclick="handleButtonClick('get flag')" disabled>GET FLAG</button>
+            </div>
+
+            <div class="output-container">
+                <textarea id="output2" class="output-common" readonly></textarea>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 获取按钮和文本框元素
+        const button1 = document.getElementById('button1');
+        const button2 = document.getElementById('button2');
+        const button3 = document.getElementById('button3');
+        const output1 = document.getElementById('output1');
+        const output2 = document.getElementById('output2');
+
+        // 从 localStorage 加载状态
+        function loadState() {
+            const state = JSON.parse(localStorage.getItem('appState')) || {
+                button1Disabled: false,
+                button2Disabled: true,
+                button3Disabled: true,
+                output1Value: output1.value,
+                output2Value: output2.value,
+            };
+
+            // 应用状态
+            button1.disabled = state.button1Disabled;
+            button2.disabled = state.button2Disabled;
+            button3.disabled = state.button3Disabled;
+            output1.value = state.output1Value;
+            output2.value = state.output2Value;
+        }
+
+        // 保存状态到 localStorage
+        function saveState() {
+            const state = {
+                button1Disabled: button1.disabled,
+                button2Disabled: button2.disabled,
+                button3Disabled: button3.disabled,
+                output1Value: output1.value,
+                output2Value: output2.value,
+            };
+            localStorage.setItem('appState', JSON.stringify(state));
+        }
+
+        // 页面加载时恢复状态
+        window.addEventListener('load', loadState);
+
+        // 处理按钮点击的函数
+        async function handleButtonClick(buttonId) {
+            try {
+                // 如果点击的是按钮 1
+                if (buttonId === 'launch') {
+                    button1.disabled = true; // 禁用按钮 1
+                    button2.disabled = false; // 启用按钮 2
+                    button3.disabled = false; // 启用按钮 3
+                    output2.value = 'launching...';
+                }
+                if (buttonId === 'new round') {
+                    output1.value = "please wait for the challenge contract to be deployed...";
+                    button2.disabled = true;
+                    // 第一次请求
+                    const response1 = await fetch('/button-click', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ button_id: 'new round' }), // 发送按钮 ID 和步骤
+                    });
+                    const data1 = await response1.json();
+                    output1.value += '\n' + data1.result;
+
+                    // 一分钟后发送第二次请求
+                    setTimeout(async () => {
+                        const response2 = await fetch('/button-click', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ button_id: 'check winner' }), // 发送按钮 ID 和步骤
+                        });
+                        const data2 = await response2.json();
+                        output1.value += '\n' + data2.result;
+
+                        // 保存状态
+                        saveState();
+                    }, 60000); // 60 秒后执行
+                    button2.disabled = false;
+                } else {
+                    const response = await fetch('/button-click', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ button_id: buttonId }), // 发送按钮 ID
+                    });
+
+                    // 解析响应
+                    const data = await response.json();
+                    if (buttonId === 'launch') {
+                        output2.value = data.result;
+                    }
+                    else {
+                        output1.value = data.result;
+                    }
+
+                    // 保存状态
+                    saveState();
+                }
+            } catch (error) {
+                output.value = `错误: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+
+</html>

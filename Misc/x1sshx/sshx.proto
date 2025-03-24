@@ -1,0 +1,120 @@
+// This file contains the service definition for sshx, used by the client to
+// communicate their terminal state over gRPC.
+
+syntax = "proto3";
+package sshx;
+
+service SshxService {
+  // Create a new SSH session for a given computer.
+  rpc Open(OpenRequest) returns (OpenResponse);
+
+  // Stream real-time commands and terminal outputs to the session.
+  rpc Channel(stream ClientUpdate) returns (stream ServerUpdate);
+
+  // Gracefully shut down an existing SSH session.
+  rpc Close(CloseRequest) returns (CloseResponse);
+}
+
+// Details of bytes exchanged with the terminal.
+message TerminalData {
+  uint32 id = 1;  // ID of the shell.
+  bytes data = 2; // Encrypted, UTF-8 terminal data.
+  uint64 seq = 3; // Sequence number of the first byte.
+}
+
+// Details of bytes input to the terminal (not necessarily valid UTF-8).
+message TerminalInput {
+  uint32 id = 1;     // ID of the shell.
+  bytes data = 2;    // Encrypted binary sequence of terminal data.
+  uint64 offset = 3; // Offset of the first byte for encryption.
+}
+
+// Pair of a terminal ID and its associated size.
+message TerminalSize {
+  uint32 id = 1;   // ID of the shell.
+  uint32 rows = 2; // Number of rows for the terminal.
+  uint32 cols = 3; // Number of columns for the terminal.
+}
+
+// Request to open an sshx session.
+message OpenRequest {
+  string origin = 1;                      // Web origin of the server.
+  bytes encrypted_zeros = 2;              // Encrypted zero block, for client verification.
+  string name = 3;                        // Name of the session (user@hostname).
+  optional bytes write_password_hash = 4; // Hashed write password, if read-only mode is enabled.
+}
+
+// Details of a newly-created sshx session.
+message OpenResponse {
+  string name = 1;  // Name of the session.
+  string token = 2; // Signed verification token for the client.
+  string url = 3;   // Public web URL to view the session.
+}
+
+// Sequence numbers for all active shells, used for synchronization.
+message SequenceNumbers {
+  map<uint32, uint64> map = 1; // Active shells and their sequence numbers.
+}
+
+// Data for a new shell.
+message NewShell {
+  uint32 id = 1; // ID of the shell.
+  int32 x = 2;   // X position of the shell.
+  int32 y = 3;   // Y position of the shell.
+}
+
+// Bidirectional streaming update from the client.
+message ClientUpdate {
+  oneof client_message {
+    string hello = 1;           // First stream message: "name,token".
+    TerminalData data = 2;      // Stream data from the terminal.
+    NewShell created_shell = 3; // Acknowledge that a new shell was created.
+    uint32 closed_shell = 4;    // Acknowledge that a shell was closed.
+    fixed64 pong = 14;          // Response for latency measurement.
+    string error = 15;
+  }
+}
+
+// Bidirectional streaming update from the server.
+message ServerUpdate {
+  oneof server_message {
+    TerminalInput input = 1;   // Remote input bytes, received from the user.
+    NewShell create_shell = 2; // ID of a new shell.
+    uint32 close_shell = 3;    // ID of a shell to close.
+    SequenceNumbers sync = 4;  // Periodic sequence number sync.
+    TerminalSize resize = 5;   // Resize a terminal window.
+    fixed64 ping = 14;         // Request a pong, with the timestamp.
+    string error = 15;
+  }
+}
+
+// Request to stop a sshx session gracefully.
+message CloseRequest {
+  string name = 1;  // Name of the session to terminate.
+  string token = 2; // Session verification token.
+}
+
+// Server response to closing a session.
+message CloseResponse {}
+
+// Snapshot of a session, used to restore state for persistence across servers.
+message SerializedSession {
+  bytes encrypted_zeros = 1;
+  map<uint32, SerializedShell> shells = 2;
+  uint32 next_sid = 3;
+  uint32 next_uid = 4;
+  string name = 5;
+  optional bytes write_password_hash = 6;
+}
+
+message SerializedShell {
+  uint64 seqnum = 1;
+  repeated bytes data = 2;
+  uint64 chunk_offset = 3;
+  uint64 byte_offset = 4;
+  bool closed = 5;
+  int32 winsize_x = 6;
+  int32 winsize_y = 7;
+  uint32 winsize_rows = 8;
+  uint32 winsize_cols = 9;
+}
