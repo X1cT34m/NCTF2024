@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Internal API</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 text-gray-800">
+    <header class="bg-blue-600 text-white p-6">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <h1 class="text-3xl font-bold">Internal API</h1>
+            <button id="openReportModal"
+                class="bg-white text-blue-700 px-4 py-2 rounded-md shadow hover:bg-blue-100 focus:outline-none focus:ring focus:ring-blue-400">
+                Report URL
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto mt-10 space-y-12">
+        <section class="bg-white p-8 shadow-md rounded-md">
+            <h2 class="text-2xl font-semibold mb-4">Search Comments</h2>
+            <form id="searchForm" class="space-y-4">
+                <div>
+                    <label for="query" class="block font-medium">Query</label>
+                    <input type="text" id="query" name="query" required
+                        class="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                </div>
+                <button type="submit"
+                    class="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-offset-1 focus:ring-blue-400">
+                    Search
+                </button>
+            </form>
+            <div id="searchResults" class="mt-6 space-y-4"></div>
+        </section>
+    </main>
+
+    <div id="reportModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-lg w-96 p-6 space-y-4">
+            <h3 class="text-xl font-semibold text-gray-700">Report a URL</h3>
+            <form id="reportForm" class="space-y-4">
+                <div>
+                    <label for="url" class="block text-sm font-medium text-gray-700">URL to Report</label>
+                    <input type="text" id="url" name="url" required
+                        class="w-full mt-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" id="closeReportModal"
+                        class="px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-400">
+                        Submit
+                    </button>
+                </div>
+            </form>
+            <p id="reportMessage" class="mt-2 text-green-600"></p>
+        </div>
+    </div>
+
+    <script>
+        const reportModal = document.getElementById('reportModal');
+        const openReportModalButton = document.getElementById('openReportModal');
+        const closeReportModalButton = document.getElementById('closeReportModal');
+
+        openReportModalButton.addEventListener('click', () => {
+            reportModal.classList.remove('hidden');
+        });
+
+        closeReportModalButton.addEventListener('click', () => {
+            reportModal.classList.add('hidden');
+        });
+
+        document.getElementById('reportForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const url = document.getElementById('url').value;
+
+            const response = await fetch('/report', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ url })
+            });
+
+            const result = await response.json();
+            document.getElementById('reportMessage').textContent = result.message;
+            setTimeout(() => reportModal.classList.add('hidden'), 2000);
+        });
+
+        document.getElementById('searchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const query = document.getElementById('query').value;
+
+            const response = await fetch(`/search?s=${encodeURIComponent(query)}`);
+
+            const resultsContainer = document.getElementById('searchResults');
+            resultsContainer.innerHTML = '';
+
+            if (response.ok) {
+                const data = await response.json();
+                data.forEach(comment => {
+                    const div = document.createElement('div');
+                    div.classList.add('p-4', 'border', 'rounded-md', 'bg-gray-50');
+                    div.textContent = comment;
+                    resultsContainer.appendChild(div);
+                });
+            } else {
+                const data = await response.text();
+                const message = document.createElement('p');
+                message.classList.add('text-red-600');
+                message.textContent = data;
+                resultsContainer.appendChild(message);
+            }
+        });
+    </script>
+</body>
+
+</html>

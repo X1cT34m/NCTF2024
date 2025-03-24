@@ -1,0 +1,22 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - FLAG=flag{test}
+    depends_on:
+      - bot
+
+  bot:
+    image: selenium/standalone-chrome:latest
+    ports:
+      - "4444:4444"
+    environment:
+      - SE_ENABLE_TRACING=false
+      - SE_START_XVFB=false
+      - SE_NODE_MAX_SESSIONS=4
+      - SE_NODE_OVERRIDE_MAX_SESSIONS=true
+      - SE_ENABLE_BROWSER_LEFTOVERS_CLEANUP=true
+      - SE_BROWSER_LEFTOVERS_INTERVAL_SECS=1800
+      - SE_BROWSER_LEFTOVERS_PROCESSES_SECS=300
