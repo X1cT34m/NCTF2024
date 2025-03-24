@@ -570,3 +570,117 @@ public class SerializeUtil {
     }
 }
 ```
+## ez_dash & ez_dash_revenge
+> 预期解是污染掉bottle.TEMPLATE_PATH实现任意文件读取，没想到可以<%%>直接rce sorry
+```
+@bottle.post('/setValue')
+def set_value():
+    name = bottle.request.query.get('name')
+    path=bottle.request.json.get('path')
+    if not isinstance(path,str):
+        return "no"
+    if len(name)>6 or len(path)>32:
+        return "no"
+    value=bottle.request.json.get('value')
+    return "yes" if setval(name, path, value) else "no"
+
+@bottle.get('/render')
+def render_template():
+    path=bottle.request.query.get('path')
+    if len(path)>10:
+        return "hacker"
+    blacklist=["{","}",".","%","<",">","_"] 
+    for c in path:
+        if c in blacklist:
+            return "hacker"
+    return bottle.template(path)
+```
+首先就是这两个路由，理想状态下render路由只能渲染文件，而不是传入的字符串。但是我们看到
+```
+@classmethod
+def search(cls, name, lookup=None):
+    """ Search name in all directories specified in lookup.
+    First without, then with common extensions. Return first hit. """
+    if not lookup:
+        raise depr(0, 12, "Empty template lookup path.", "Configure a template lookup path.")
+
+    if os.path.isabs(name):
+        raise depr(0, 12, "Use of absolute path for template name.",
+                   "Refer to templates with names or paths relative to the lookup path.")
+
+    for spath in lookup:
+        spath = os.path.abspath(spath) + os.sep
+        fname = os.path.abspath(os.path.join(spath, name))
+        if not fname.startswith(spath): continue
+        if os.path.isfile(fname): return fname
+        for ext in cls.extensions:
+            if os.path.isfile('%s.%s' % (fname, ext)):
+                return '%s.%s' % (fname, ext)
+```
+最终找到BaseTemplate的search方法，可以看到是没办法使用../../来逃逸的，所以需要想办法去修改TEMPLATE_PATH，然后去实现任意文件读取，接下来去看setval函数
+```
+def setval(name:str, path:str, value:str)-> Optional[bool]:
+    if name.find("__")>=0: return False
+    for word in __forbidden_name__:
+        if name==word:
+            return False
+    for word in __forbidden_path__:
+        if path.find(word)>=0: return False
+    obj=globals()[name]
+    try:
+        pydash.set_(obj,path,value)
+    except:
+        return False
+    return True
+```
+结合黑名单和限制大致的利用就是
+```
+setval.__globals__.bottle.TEMPLATE=['../../../../../proc/self/']
+```
+但是pydash是不允许去修改__globals__属性的，去看一下代码
+```
+def base_set(obj, key, value, allow_override=True):
+    """
+    Set an object's `key` to `value`. If `obj` is a ``list`` and the `key` is the next available
+    index position, append to list; otherwise, pad the list of ``None`` and then append to the list.
+
+    Args:
+        obj: Object to assign value to.
+        key: Key or index to assign to.
+        value: Value to assign.
+        allow_override: Whether to allow overriding a previously set key.
+    """
+    if isinstance(obj, dict):
+        if allow_override or key not in obj:
+            obj[key] = value
+    elif isinstance(obj, list):
+        key = int(key)
+
+        if key < len(obj):
+            if allow_override:
+                obj[key] = value
+        else:
+            if key > len(obj):
+                # Pad list object with None values up to the index key, so we can append the value
+                # into the key index.
+                obj[:] = (obj + [None] * key)[:key]
+            obj.append(value)
+    elif (allow_override or not hasattr(obj, key)) and obj is not None:
+        _raise_if_restricted_key(key)
+        setattr(obj, key, value)
+
+    return obj
+def _raise_if_restricted_key(key):
+    # Prevent access to restricted keys for security reasons.
+    if key in RESTRICTED_KEYS:
+        raise KeyError(f"access to restricted key {key!r} is not allowed")
+```
+所以可以先利用这个setval将RESTRICTED_KEYS修改
+![image](https://github.com/user-attachments/assets/f365f8d0-4421-4732-a965-836044115b03)
+
+然后再去修改
+![image](https://github.com/user-attachments/assets/8ff833d7-4617-4999-9167-b603a74fcc75)
+![image](https://github.com/user-attachments/assets/4c5a0a79-ca9e-4d66-811f-4dbd22f2ebdf)
+
+
+
