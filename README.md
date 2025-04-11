@@ -19,4 +19,6 @@ NCTF 2024 题目和 Writeup
 | Crypto  |        Sign           | Hibiscus|
 | Crypto  |         绮云          | Hibiscus|
 | Crypto  |        Arcahv         | Hibiscus|
-
+|Pwn|unauth-diary|unauth401|
+|Pwn|unauthwarden-whoami|unauth401|
+|Pwn|unauthwarden-reveal|unauth401|
